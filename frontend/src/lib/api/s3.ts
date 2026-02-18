@@ -8,6 +8,15 @@ import type {
 } from "../schemas/s3";
 import type { MeilisearchRefreshStatus } from "../schemas/meilisearch";
 
+type RawS3ObjectModel = {
+  key: string;
+  size: number;
+  last_modified?: string;
+  storage_class?: string;
+  lastModified?: string;
+  storageClass?: string;
+};
+
 // helper to add parameters to queries
 function addQueryParam(queries: URLSearchParams, key: string, value: unknown) {
   if (value === undefined || value === null) return;
@@ -42,8 +51,8 @@ export async function searchS3(params: S3SearchRequest): Promise<S3ObjectModel[]
   addQueryParam(queries, "storage_classes", params.storageClasses);
   addQueryParam(queries, "modified_after", params.modifiedAfter);
   addQueryParam(queries, "modified_before", params.modifiedBefore);
-  addQueryParam(queries, "sort_by", params.sort_by);
-  addQueryParam(queries, "sort_direction", params.sort_direction);
+  addQueryParam(queries, "sort_by", params.sortBy);
+  addQueryParam(queries, "sort_direction", params.sortDirection);
 
   const res = await fetch(`/api/s3/search?${queries.toString()}`);
   if (!res.ok) {
@@ -51,7 +60,13 @@ export async function searchS3(params: S3SearchRequest): Promise<S3ObjectModel[]
     throw new Error(`S3 search failed: ${res.status} ${errorText}`);
   }
 
-  return await res.json();
+  const raw = (await res.json()) as RawS3ObjectModel[];
+  return raw.map((item) => ({
+    key: item.key,
+    size: item.size,
+    lastModified: item.lastModified ?? item.last_modified,
+    storageClass: item.storageClass ?? item.storage_class,
+  }));
 }
 
 export async function searchS3Folders(params: S3FolderSearchRequest): Promise<S3FolderModel[]> {

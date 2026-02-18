@@ -1,8 +1,8 @@
 export type S3ObjectModel = {
   key: string;
   size: number;
-  last_modified?: string;
-  storage_class?: string;
+  lastModified?: string;
+  storageClass?: string;
 };
 
 export type S3SearchRequest = {
@@ -15,8 +15,8 @@ export type S3SearchRequest = {
   storageClasses?: string[];
   modifiedAfter?: string;
   modifiedBefore?: string;
-  sort_by?: "Key" | "Size" | "LastModified";
-  sort_direction?: "asc" | "desc";
+  sortBy?: "Key" | "Size" | "LastModified";
+  sortDirection?: "asc" | "desc";
 };
 
 export type S3FolderModel = {
@@ -33,7 +33,7 @@ export type S3BreadcrumbModel = {
 
 export type S3FolderChildrenResponse = {
   path: string;
-  breadcrumbs: S3FolderChildrenResponse[];
+  breadcrumbs: S3BreadcrumbModel[];
   children: S3FolderModel[];
 };
 
