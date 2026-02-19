@@ -35,6 +35,7 @@ export type S3FolderChildrenResponse = {
   path: string;
   breadcrumbs: S3BreadcrumbModel[];
   children: S3FolderModel[];
+  files?: S3ObjectModel[];
 };
 
 export type S3FolderSearchRequest = {

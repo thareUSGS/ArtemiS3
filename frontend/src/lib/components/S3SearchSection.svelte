@@ -39,6 +39,7 @@
   let folderChildren: S3FolderModel[] = [];
   let folderBreadcrumbs: S3FolderChildrenResponse["breadcrumbs"] = [];
   let activeFolderPath = "";
+  let folderFiles: S3ObjectModel[] = [];
 
   let sortBy: "Key" | "Size" | "LastModified" | undefined = undefined;
   let sortDirection: "asc" | "desc" = "asc";
@@ -85,6 +86,7 @@
     folderChildren = [];
     folderBreadcrumbs = [];
     activeFolderPath = "";
+    folderFiles = [];
   }
 
   function setViewMode(mode: string) {
@@ -136,6 +138,7 @@
     activeFolderPath = data.path;
     folderBreadcrumbs = data.breadcrumbs;
     folderChildren = data.children;
+    folderFiles = data.files ?? [];
   }
 
   async function runFolderSearch() {
@@ -156,6 +159,7 @@
         folderChildren = [];
         folderBreadcrumbs = [];
         activeFolderPath = "";
+        folderFiles = [];
       }
     } catch (err) {
       s3Error =
@@ -380,16 +384,27 @@
       {sortDirection}
     />
   {:else}
-    <S3FolderExplorer
-      searchedYet={hasSearched}
-      loading={s3Loading}
-      suggestions={folderSuggestions}
-      children={folderChildren}
-      breadcrumbs={folderBreadcrumbs}
-      activePath={activeFolderPath}
-      onOpenFolder={openFolder}
-      onOpenBreadcrumb={openBreadcrumb}
-      onNavigateUp={navigateUp}
-    />
+    <div class="space-y-4">
+      <S3FolderExplorer
+        searchedYet={hasSearched}
+        loading={s3Loading}
+        suggestions={folderSuggestions}
+        children={folderChildren}
+        breadcrumbs={folderBreadcrumbs}
+        activePath={activeFolderPath}
+        onOpenFolder={openFolder}
+        onOpenBreadcrumb={openBreadcrumb}
+        onNavigateUp={navigateUp}
+      />
+      <S3ResultsTable
+        {s3Uri}
+        items={folderFiles}
+        searchedYet={hasSearched}
+        onDownload={handleDownload}
+        onSort={handleSort}
+        {sortBy}
+        {sortDirection}
+      />
+    </div>
   {/if}
 </section>

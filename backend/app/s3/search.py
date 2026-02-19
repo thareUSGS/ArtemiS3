@@ -55,6 +55,19 @@ def _breadcrumbs(path: str) -> List[Dict[str, str]]:
             for i in range(1, len(parts) + 1)]
 
 
+def _to_last_modified(raw: Any) -> datetime | None:
+    """Convert indexed LastModified values to datetime if possible."""
+    if raw is None:
+        return None
+    try:
+        return datetime.fromtimestamp(int(raw))
+    except (TypeError, ValueError, OSError):
+        try:
+            return datetime.fromisoformat(str(raw))
+        except ValueError:
+            return None
+
+
 def iter_s3_objects(bucket: str,
                     prefix: str,
                     contains: Optional[str] = None,
@@ -278,7 +291,7 @@ def list_folder_children_from_meili(
     contains: Optional[str] = None,
     limit: int = 100
 ) -> Dict[str, Any]:
-    """Return direct child folders and breadcrumbs for a folder path."""
+    """Return direct child folders/files and breadcrumbs for a folder path."""
     meili_url = os.getenv("MEILISEARCH_URL")
     meili_client = meilisearch.Client(meili_url)
 
@@ -299,6 +312,7 @@ def list_folder_children_from_meili(
     result = meili_client.index(bucket).search(contains or "", search_opts)
     counts = _facet_map(result, "Ancestors")
 
+    # get children of current selected folder
     children: List[Dict[str, Any]] = []
     for raw_path, count in counts.items():
         folder_path = normalize_s3_path(raw_path)
@@ -311,8 +325,37 @@ def list_folder_children_from_meili(
             })
 
     children.sort(key=lambda x: (-x["matched_count"], x["name"]))
+
+    # build options to grab files
+    parent_filter = (
+        f"ParentPath = '{escape_meili_filter_val(active)}'"
+        if active
+        else "ParentPath = ''"
+    )
+    file_opts: Dict[str, Any] = {
+        "filter": [parent_filter],
+        "limit": limit,
+        "sort": ["Key:asc"],
+        "attributesToRetrieve": ["Key", "Size", "LastModified", "StorageClass"]
+    }
+    file_result = meili_client.index(bucket).search(contains or "", file_opts)
+
+    # find all files within current folder
+    files: List[Dict[str, Any]] = []
+    for document in file_result.get("hits", []):
+        key = document.get("Key")
+        if not key or str(key).endswith("/"):
+            continue
+        files.append({
+            "key": key,
+            "size": int(document.get("Size", 0)),
+            "last_modified": _to_last_modified(document.get("LastModified")),
+            "storage_class": document.get("StorageClass")
+        })
+
     return {
         "path": active,
         "breadcrumbs": _breadcrumbs(active),
-        "children": children[:limit]
+        "children": children[:limit],
+        "files": files
     }

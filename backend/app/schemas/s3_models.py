@@ -26,3 +26,4 @@ class S3FolderChildrenResponse(BaseModel):
     path: str
     breadcrumbs: List[S3BreadcrumbModel]
     children: List[S3FolderModel]
+    files: List[S3ObjectModel]

@@ -54,24 +54,30 @@
     <div class="grid gap-3 md:grid-cols-2">
       <div>
         <h3 class="text-sm font-semibold mb-2">Relevant folders</h3>
-        <ul class="space-y-1">
-          {#each suggestions as folder}
-            <li>
-              <button
-                type="button"
-                class={`w-full text-left text-sm px-2 py-1 rounded border ${
-                  activePath === folder.path
-                    ? "bg-white border-blue-300"
-                    : "border-transparent hover:bg-white hover:border-gray-200"
-                }`}
-                on:click={() => onOpenFolder(folder.path)}
-              >
-                <span class="font-mono">{folder.path}</span>
-                <span class="text-gray-500 ml-2">({folder.matched_count})</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
+        {#if suggestions.length === 0}
+          <p class="text-sm text-gray-500">No relevant folders.</p>
+        {:else}
+          <ul class="space-y-1">
+            {#each suggestions as folder}
+              <li>
+                <button
+                  type="button"
+                  class={`w-full text-left text-sm px-2 py-1 rounded border ${
+                    activePath === folder.path
+                      ? "bg-white border-blue-300"
+                      : "border-transparent hover:bg-white hover:border-gray-200"
+                  }`}
+                  on:Click={() => onOpenFolder(folder.path)}
+                >
+                  <span class="font-mono">{folder.path}</span>
+                  <span class="text-gray-500 ml-2"
+                    >({folder.matched_count})</span
+                  >
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
 
       <div>
@@ -88,7 +94,8 @@
                   on:click={() => onOpenFolder(child.path)}
                 >
                   <span class="font-mono">{child.name}</span>
-                  <span class="text-gray-500 ml-2">({child.matched_count})</span>
+                  <span class="text-gray-500 ml-2">({child.matched_count})</span
+                  >
                 </button>
               </li>
             {/each}

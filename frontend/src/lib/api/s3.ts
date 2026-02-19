@@ -99,5 +99,16 @@ export async function searchS3FolderChildren(params: S3FolderChildrenRequest): P
     throw new Error(`S3 folder children failed: ${res.status} ${errorText}`);
   }
 
-  return await res.json();
+  const data = await res.json();
+  return {
+    path: data.path,
+    breadcrumbs: data.breadcrumbs,
+    children: data.children,
+    files: data.files?.map((item) => ({
+      key: item.key,
+      size: item.size,
+      lastModified: item.lastModified ?? item.last_modified,
+      storageClass: item.storageClass ?? item.storage_class
+    }))
+  };
 }
