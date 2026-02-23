@@ -29,12 +29,13 @@ from app.schemas.meili_models import MeiliDocumentModel
 
 
 # List of supported text file types for full-text indexing
-TEXT_CONTENT_TYPES = ["text/plain", "text/css", "text/csv",
+TEXT_CONTENT_TYPES = ["text/plain", "text/css", "text/csv", "text/xml", "application/xml"
                       "text/html", "text/markdown", "application/json"]
 # Keyword parsing separation characters
 SEPARATION_CHARACTERS = ["/", ",", "_", "-", " ", ".", "\n",
                          ":", "\\", "(", ")", "[", "]", "=", ";", "—", "*", "\""]
 INDEX_SETTINGS = {
+    "rankingRules": ["sort", "words", "typo", "proximity", "attribute", "exactness"],
     "searchableAttributes": ["Tags", "FileName", "Key", "Keywords"],
     "filterableAttributes": [
         "ContentType", "Size", "StorageClass", "LastModified",
