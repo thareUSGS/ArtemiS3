@@ -32,6 +32,21 @@
     dropdownOpen = !dropdownOpen;
   }
 
+  $: {
+    selectedTypes;
+    minSizeInput;
+    maxSizeInput;
+    selectedStorageClasses;
+    dateValue;
+    dateCondition;
+    minUnit;
+    maxUnit;
+
+    if (dropdownOpen) {
+      sendFilter();
+    }
+  }
+
   function sendFilter() {
     const minSize = minSizeInput
       ? Math.round(Number(minSizeInput) * minUnit)
@@ -51,7 +66,6 @@
     };
 
     onApply(payload);
-    dropdownOpen = false;
   }
 
   function resetFilters() {
@@ -72,12 +86,33 @@
       customType = "";
     }
   }
+
+  function clickOutside(node: HTMLElement) {
+    const handleClick = (event: MouseEvent) => {
+      if (
+        dropdownOpen &&
+        node &&
+        !node.contains(event.target as Node) &&
+        !event.defaultPrevented
+      ) {
+        dropdownOpen = false;
+      }
+    };
+
+    document.addEventListener("click", handleClick, true);
+
+    return {
+      destroy() {
+        document.removeEventListener("click", handleClick, true);
+      },
+    };
+  }
 </script>
 
 <div class="relative">
   <button
     type="button"
-    on:click={toggleDropdown}
+    on:click|stopPropagation={toggleDropdown}
     class="border p-2 rounded bg-gray-100 hover:bg-gray-200 flex items-center gap-2"
   >
     <ListIcon class="w-4 h-4" />
@@ -85,7 +120,10 @@
   </button>
 
   {#if dropdownOpen}
-    <div class="absolute mt-1 border rounded bg-white shadow p-4 w-80 z-10">
+    <div
+      use:clickOutside
+      class="absolute mt-1 border rounded bg-white shadow p-4 w-80 z-10"
+    >
       <div class="mb-4">
         <h4 class="font-semibold mb-2">File types</h4>
         <div class="flex flex-col gap-1">
@@ -214,14 +252,6 @@
         class="text-xs text-gray-400 hover:text-gray-600 hover:underline transition-all"
       >
         Clear all filters
-      </button>
-
-      <button
-        type="button"
-        on:click={sendFilter}
-        class="mt-2 bg-blue-500 text-white p-2 rounded w-full hover:bg-blue-600 transition-colors"
-      >
-        Apply filters
       </button>
     </div>
   {/if}
