@@ -21,6 +21,8 @@ app.add_middleware(
 meilisearch_url = os.getenv("MEILISEARCH_URL")
 meili_client = meilisearch.Client(meilisearch_url)
 
+postgres_url = os.getenv("DATABASE_URL")
+
 # routers for various API endpoint functionalities
 app.include_router(s3_router)
 
@@ -72,3 +74,7 @@ def test(name: str = "world") -> dict:
 def test() -> dict:
     health = meili_client.health()
     return {"status": health}
+
+@app.get("/api/postgres/test")
+def test() -> dict:
+    return {"url": postgres_url}
