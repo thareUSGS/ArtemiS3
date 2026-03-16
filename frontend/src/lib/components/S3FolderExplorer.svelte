@@ -12,7 +12,15 @@
     S3ObjectModel,
   } from "../schemas/s3";
 
-  const PREVIEWABLE_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
+  const PREVIEWABLE_EXTENSIONS = [
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".mp4",
+    ".mp3",
+  ];
 
   export let searchedYet = false;
   export let loading = false;
@@ -28,9 +36,7 @@
   export let onOpenFolder: (path: string) => void = () => {};
   export let onOpenBreadcrumb: (path: string) => void = () => {};
   export let onNavigateUp: () => void = () => {};
-  export let onSort: (
-    column: "Key" | "Size" | "LastModified",
-  ) => void = () => {};
+  export let onSort: (column: "Key" | "Size" | "LastModified") => void = () => {};
   export let onDownload: (key: string) => void = () => {};
 
   let previewKey: string | null = null;
@@ -43,9 +49,7 @@
   $: if (selectedFolderPath === null && activePath) {
     selectedFolderPath = activePath;
   }
-  $: sortedChildren = [...children].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  $: sortedChildren = [...children].sort((a, b) => a.name.localeCompare(b.name));
   $: if (previewKey && !files.some((item) => item.key === previewKey)) {
     clearPreview();
   }
@@ -78,6 +82,11 @@
     if (bytes < 1024 * 1024 * 1024)
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  function sortLabel(column: "Key" | "Size" | "LastModified", label: string) {
+    if (sortBy !== column) return `${label} -`;
+    return `${label} ${sortDirection === "asc" ? "^" : "v"}`;
   }
 
   function selectFolder(path: string) {
@@ -140,32 +149,30 @@
 </script>
 
 {#if !searchedYet}
-  <p class="mt-3 text-gray-600 text-sm">
-    No results yet. Enter a valid S3 URI and run a folder search.
+  <p class="text-base text-slate-300/90 md:text-lg">
+    No results yet.<br />Enter an S3 URI and run a folder search.
   </p>
-{:else if searchedYet && suggestions.length === 0}
-  <p class="mt-3 text-gray-600 text-sm">
-    No folders found. Try a different query.
-  </p>
+{:else if suggestions.length === 0}
+  <p class="text-base text-slate-300/90 md:text-lg">No folders found. Try a different query.</p>
 {:else}
-  <div class="mt-4 border border-gray-200 rounded-lg bg-white overflow-hidden">
+  <div class="overflow-hidden rounded-md border border-slate-400/50 bg-slate-950/45">
     <div
-      class="px-3 py-2 border-b border-gray-200 bg-gray-50 flex flex-wrap items-center gap-2 justify-between"
+      class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-500/50 bg-slate-900/75 px-4 py-3"
     >
-      <div class="flex items-center gap-2 min-w-0 flex-wrap">
-        <span class="text-sm font-medium text-gray-700">Path</span>
+      <div class="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+        <span class="font-semibold text-slate-200">Path</span>
         <button
           type="button"
-          class="text-sm text-blue-700 hover:text-blue-800 underline cursor-pointer"
+          class="rounded px-1 text-amber-300 underline decoration-amber-400/65 underline-offset-3 transition hover:text-amber-200"
           on:click={() => openBreadcrumb("")}
         >
           root
         </button>
         {#each breadcrumbs as crumb}
-          <span class="text-gray-400">/</span>
+          <span class="text-slate-500">/</span>
           <button
             type="button"
-            class="text-sm text-blue-700 hover:text-blue-800 underline cursor-pointer"
+            class="rounded px-1 text-amber-300 underline decoration-amber-400/65 underline-offset-3 transition hover:text-amber-200"
             on:click={() => openBreadcrumb(crumb.path)}
           >
             {crumb.name}
@@ -174,11 +181,11 @@
       </div>
       <div class="flex items-center gap-2">
         {#if loading}
-          <span class="text-xs text-gray-500">Loading...</span>
+          <span class="text-xs text-slate-300">Loading...</span>
         {/if}
         <button
           type="button"
-          class="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-100 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          class="rounded border border-slate-500/45 bg-slate-900/85 px-2 py-1 text-xs font-semibold text-slate-200 transition hover:bg-slate-800/75 disabled:cursor-not-allowed disabled:opacity-55"
           on:click={onNavigateUp}
           disabled={!activePath || loading}
         >
@@ -187,34 +194,26 @@
       </div>
     </div>
 
-    <div
-      class="grid grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] min-h-[430px]"
-    >
-      <aside
-        class="border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-3"
-      >
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">
-          Relevant folders
-        </h3>
+    <div class="grid min-h-[420px] grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <aside class="border-b border-slate-700/60 bg-slate-900/55 p-3 lg:border-b-0 lg:border-r">
+        <h3 class="mb-2 text-sm font-semibold tracking-wide text-slate-200">Relevant folders</h3>
         {#if suggestions.length === 0}
-          <p class="text-sm text-gray-500">No relevant folders.</p>
+          <p class="text-sm text-slate-400">No relevant folders.</p>
         {:else}
-          <ul class="space-y-1 max-h-[360px] overflow-auto pr-1">
+          <ul class="space-y-1">
             {#each suggestions as folder}
               <li>
                 <button
                   type="button"
-                  class={`w-full text-left text-sm px-2 py-1 rounded border cursor-pointer flex items-center justify-between gap-2 ${
+                  class={`flex w-full items-center justify-between gap-2 rounded border px-2 py-1 text-left text-sm transition ${
                     selectedFolderPath === folder.path
-                      ? "bg-blue-50 border-blue-200 text-blue-900"
-                      : "border-transparent hover:bg-gray-50 hover:border-gray-200"
+                      ? "border-amber-300/50 bg-amber-400/15 text-amber-200"
+                      : "border-slate-600/40 bg-slate-900/40 text-slate-200 hover:bg-slate-800/55"
                   }`}
                   on:click={() => openFolder(folder.path)}
                 >
-                  <span class="truncate font-mono">{folder.path}</span>
-                  <span class="text-xs text-gray-500 shrink-0"
-                    >{folder.matched_count}</span
-                  >
+                  <span class="mono truncate">{folder.path}</span>
+                  <span class="text-xs text-slate-400">{folder.matched_count}</span>
                 </button>
               </li>
             {/each}
@@ -222,87 +221,75 @@
         {/if}
       </aside>
 
-      <div class="p-3 bg-white space-y-3">
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
+      <div class="p-3">
+        <div class="overflow-x-auto rounded-md border border-slate-500/45 bg-slate-950/45">
+          <table class="w-full min-w-[900px] text-sm">
+            <thead class="border-b border-slate-600/60 bg-slate-900/70 text-left text-sm font-semibold">
               <tr>
                 <th
                   title="Sort Alphabetically"
-                  class="text-left p-2 cursor-pointer"
+                  class="cursor-pointer px-3 py-2"
                   on:click={() => onSort("Key")}
                 >
-                  {sortBy === "Key"
-                    ? sortDirection === "asc"
-                      ? "Name \u25B2"
-                      : "Name \u25BC"
-                    : "Name \u2014"}
+                  {sortLabel("Key", "Name")}
                 </th>
                 <th
                   title="Sort by Biggest/Smallest"
-                  class="text-left p-2 cursor-pointer"
+                  class="cursor-pointer px-3 py-2"
                   on:click={() => onSort("Size")}
                 >
-                  {sortBy === "Size"
-                    ? sortDirection === "asc"
-                      ? "Size \u25B2"
-                      : "Size \u25BC"
-                    : "Size \u2014"}
+                  {sortLabel("Size", "Size")}
                 </th>
                 <th
                   title="Sort by Most Recent/Least Recent"
-                  class="text-left p-2 cursor-pointer"
+                  class="cursor-pointer px-3 py-2"
                   on:click={() => onSort("LastModified")}
                 >
-                  {sortBy === "LastModified"
-                    ? sortDirection === "asc"
-                      ? "Last modified  \u25B2"
-                      : "Last modified  \u25BC"
-                    : "Last modified \u2014"}
+                  {sortLabel("LastModified", "Last Modified")}
                 </th>
-                <th class="p-2 text-left">Storage Class</th>
-                <th class="p-2 text-center">Actions</th>
+                <th class="px-3 py-2">Storage Class</th>
+                <th class="px-3 py-2 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
               {#if sortedChildren.length === 0 && files.length === 0}
                 <tr>
-                  <td colspan="5" class="p-6 text-center text-sm text-gray-500">
+                  <td colspan="5" class="px-3 py-8 text-center text-sm text-slate-400">
                     This folder is empty.
                   </td>
                 </tr>
               {:else}
-                {#each sortedChildren as child}
-                  <tr class="border-gray-100 hover:bg-gray-50">
-                    <td class="p-2">
+                {#each sortedChildren as child, idx}
+                  <tr
+                    class={`group border-b border-slate-800/80 ${idx % 2 === 0 ? "bg-slate-900/45" : "bg-slate-800/60"}`}
+                  >
+                    <td class="px-3 py-2">
                       <button
                         type="button"
-                        class={`w-full text-left flex items-center gap-2 cursor-pointer rounded px-1 py-1 border ${
+                        class={`flex w-full items-center gap-2 rounded border px-2 py-1 text-left transition ${
                           selectedFolderPath === child.path
-                            ? "bg-blue-50 border-blue-200 text-blue-900"
-                            : "border-transparent hover:bg-gray-50 hover:border-gray-200"
+                            ? "border-amber-300/55 bg-amber-400/15 text-amber-200"
+                            : "border-transparent text-slate-100 hover:border-slate-500/55 hover:bg-slate-700/35"
                         }`}
                         on:click={() => selectFolder(child.path)}
                         on:dblclick={() => openFolder(child.path)}
                         title={child.path}
                       >
                         {#if selectedFolderPath === child.path}
-                          <FolderOpenIcon
-                            class="w-4 h-4 text-amber-600 shrink-0"
-                          />
+                          <FolderOpenIcon class="h-4 w-4 shrink-0 text-amber-300" />
                         {:else}
-                          <FolderIcon class="w-4 h-4 text-amber-500 shrink-0" />
+                          <FolderIcon class="h-4 w-4 shrink-0 text-amber-400" />
                         {/if}
                         <span class="truncate">{child.name}</span>
                       </button>
                     </td>
-                    <td class="p-2 text-gray-500">-</td>
-                    <td class="p-2 text-gray-500">-</td>
-                    <td class="p-2 text-gray-500">Folder</td>
-                    <td class="p-2 text-center">
+                    <td class="px-3 py-2 text-slate-400">-</td>
+                    <td class="px-3 py-2 text-slate-400">-</td>
+                    <td class="px-3 py-2 text-slate-300">Folder</td>
+                    <td class="px-3 py-2 text-center">
                       <button
                         type="button"
-                        class="text-blue-700 hover:text-blue-800 text-xs cursor-pointer"
+                        class="rounded px-2 py-1 text-xs font-semibold text-amber-200 transition hover:bg-slate-700/45"
                         on:click={() => openFolder(child.path)}
                       >
                         Open
@@ -311,107 +298,105 @@
                   </tr>
                 {/each}
 
-                {#each files as file}
+                {#each files as file, idx}
                   <tr
-                    class={`border-b border-gray-100 hover:bg-gray-50 ${
-                      selectedRow === `file:${file.key}` ? "bg-blue-50" : ""
+                    class={`group border-b border-slate-800/80 ${
+                      selectedRow === `file:${file.key}`
+                        ? "bg-amber-500/12"
+                        : idx % 2 === 0
+                          ? "bg-slate-900/45"
+                          : "bg-slate-800/60"
                     }`}
                   >
-                    <td class="p-2">
+                    <td class="px-3 py-2">
                       <button
                         type="button"
-                        class="w-full text-left flex items-center gap-2 cursor-pointer"
+                        class="flex w-full items-center gap-2 text-left text-slate-100"
                         on:click={() => (selectedRow = `file:${file.key}`)}
                         title={file.key}
                       >
-                        <FileIcon class="w-4 h-4 text-gray-500 shrink-0" />
+                        <FileIcon class="h-4 w-4 shrink-0 text-slate-400" />
                         <span class="truncate">{displayName(file.key)}</span>
                       </button>
                     </td>
-                    <td class="p-2 whitespace-nowrap"
-                      >{formatSize(file.size)}</td
-                    >
-                    <td class="p-2">{file.lastModified ?? "Unknown"}</td>
-                    <td class="p-2">{file.storageClass ?? "STANDARD"}</td>
-                    <td class="p-2">
-                      <div class="flex items-center justify-center gap-2">
+                    <td class="px-3 py-2 text-slate-200">{formatSize(file.size)}</td>
+                    <td class="px-3 py-2 text-slate-200">{file.lastModified ?? "Unknown"}</td>
+                    <td class="px-3 py-2 text-slate-200">{file.storageClass ?? "STANDARD"}</td>
+                    <td class="px-3 py-2">
+                      <div class="flex items-center justify-center gap-1 opacity-65 transition group-hover:opacity-100">
                         <button
                           type="button"
-                          class="text-blue-700 hover:text-blue-800 cursor-pointer"
+                          class="icon-button"
                           title="Download"
                           on:click={() => onDownload(file.key)}
                         >
-                          <DownloadIcon class="w-4 h-4" />
+                          <DownloadIcon class="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          class={canPreview(file.key)
-                            ? "text-emerald-700 hover:text-emerald-800 cursor-pointer"
-                            : "text-gray-300 cursor-not-allowed"}
+                          class="icon-button"
                           title={canPreview(file.key)
                             ? "Preview"
                             : "Preview unavailable for this file type"}
                           on:click={() => handlePreview(file.key)}
                           disabled={!canPreview(file.key)}
                         >
-                          <EyeIcon class="w-4 h-4" />
+                          <EyeIcon class="h-4 w-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
+
                   {#if previewKey === file.key}
-                    <tr class="border-b border-gray-100 bg-gray-50">
+                    <tr class="border-b border-slate-700/70 bg-slate-950/70">
                       <td colspan="5" class="p-3">
-                        <div class="flex items-center justify-between gap-2 mb-2">
-                          <p class="text-sm font-medium text-gray-700 truncate">
-                            Preview {previewKey}
-                          </p>
-                          <button
-                            type="button"
-                            class="text-xs text-gray-500 hover:text-red-600 cursor-pointer"
-                            on:click={clearPreview}
-                          >
-                            Close
-                          </button>
-                        </div>
-                        {#if previewLoading}
-                          <p class="text-sm text-gray-500">Loading preview...</p>
-                        {:else if previewError}
-                          <p class="text-sm text-red-600">{previewError}</p>
-                        {:else if previewUrl}
-                          {#if previewKey?.toLowerCase().endsWith(".pdf")}
-                            <iframe
-                              src={previewUrl}
-                              title="PDF preview"
-                              class="w-full h-[560px] border border-gray-200 bg-white"
-                            ></iframe>
-                          {:else if file.size > 52428800}
-                            <div
-                              class="p-4 border border-amber-200 rounded bg-amber-50 text-sm text-amber-900"
+                        <div class="rounded border border-slate-500/45 bg-slate-900/75 p-3">
+                          <div class="mb-2 flex items-center justify-between gap-2">
+                            <p class="truncate text-sm font-medium text-slate-200">
+                              Preview: {previewKey}
+                            </p>
+                            <button
+                              type="button"
+                              class="rounded px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-800/70 hover:text-rose-300"
+                              on:click={clearPreview}
                             >
-                              <p>
-                                This file is {formatSize(file.size)}. Open it in a
-                                new tab for a safer preview.
-                              </p>
-                              <a
-                                class="mt-2 inline-block text-blue-700 hover:text-blue-800 underline"
-                                href={previewUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                Open preview in new tab
-                              </a>
-                            </div>
-                          {:else}
-                            <div class="bg-white p-2 border border-gray-200 rounded">
-                              <img
+                              Close
+                            </button>
+                          </div>
+                          {#if previewLoading}
+                            <p class="text-sm text-slate-300">Loading preview...</p>
+                          {:else if previewError}
+                            <p class="text-sm text-rose-300">{previewError}</p>
+                          {:else if previewUrl}
+                            {#if previewKey?.toLowerCase().endsWith(".pdf")}
+                              <iframe
                                 src={previewUrl}
-                                alt="S3 file preview"
-                                class="max-w-full max-h-[560px] object-contain mx-auto"
-                              />
-                            </div>
+                                title="PDF preview"
+                                class="h-[560px] w-full rounded border border-slate-600/55 bg-white"
+                              ></iframe>
+                            {:else if file.size > 52428800}
+                              <div class="rounded border border-amber-300/45 bg-amber-500/15 p-4 text-sm text-amber-100">
+                                This file is {formatSize(file.size)}. Open it in a new tab for a safer preview.
+                                <a
+                                  class="ml-2 underline hover:text-amber-300"
+                                  href={previewUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Open preview
+                                </a>
+                              </div>
+                            {:else}
+                              <div class="rounded border border-slate-600/55 bg-slate-900/80 p-2">
+                                <img
+                                  src={previewUrl}
+                                  alt="S3 file preview"
+                                  class="mx-auto max-h-[560px] max-w-full object-contain"
+                                />
+                              </div>
+                            {/if}
                           {/if}
-                        {/if}
+                        </div>
                       </td>
                     </tr>
                   {/if}
@@ -424,4 +409,3 @@
     </div>
   </div>
 {/if}
-

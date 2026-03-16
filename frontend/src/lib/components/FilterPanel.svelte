@@ -1,17 +1,16 @@
 <script lang="ts">
-  import { List as ListIcon } from "@lucide/svelte";
-  
-  export let onSave: (() => void) | null = null;
+  import { ListFilter as ListIcon } from "@lucide/svelte";
 
+  export let onSave: (() => void) | null = null;
+  export let onDelete: ((name: string) => void) | null = null;
   export let onApply: (payload: {
-    selectedTypes: string[]; // file types
+    selectedTypes: string[];
     minSize?: number;
     maxSize?: number;
     storageClasses?: string[];
-    date?: string; // YYYY-MM-DD
+    date?: string;
     condition?: "after" | "before" | "";
   }) => void = () => {};
-
   export let initialFilters: {
     suffixes?: string[];
     minSize?: number;
@@ -20,12 +19,36 @@
     modifiedAfter?: string;
     modifiedBefore?: string;
   } | null = null;
+  export let savedFilters: { name: string; filters: typeof initialFilters }[] = [];
+
+  let dropdownOpen = false;
+  let selectedTypes: string[] = [];
+  let minSizeInput = "";
+  let maxSizeInput = "";
+  const allStorageClasses = ["STANDARD", "GLACIER", "INTELLIGENT_TIERING"];
+  let selectedStorageClasses: string[] = [];
+  let dateValue = "";
+  let dateCondition: "before" | "after" | "" = "before";
+  let minUnit = 1;
+  let maxUnit = 1;
+  const unitConversion = [
+    { label: "B", value: 1 },
+    { label: "KB", value: 1024 },
+    { label: "MB", value: 1024 ** 2 },
+    { label: "GB", value: 1024 ** 3 },
+  ];
+  const defaultFileTypes = ["zip", "pdf", "png", "jpg", "txt"];
+  let customType = "";
+
+  let showSavedFilters = false;
+  let savedFilterSearch = "";
+  let filteredSavedFilters: { name: string; filters: typeof initialFilters }[] = [];
+  let lastInitialFilters: any = null;
 
   export function getCurrentFilters() {
     const minSize = minSizeInput
       ? Math.round(Number(minSizeInput) * minUnit)
       : undefined;
-
     const maxSize = maxSizeInput
       ? Math.round(Number(maxSizeInput) * maxUnit)
       : undefined;
@@ -39,18 +62,9 @@
       modifiedBefore?: string;
     } = {};
 
-    if (selectedTypes.length > 0) {
-      result.suffixes = selectedTypes;
-    }
-
-    if (typeof minSize === "number") {
-      result.minSize = minSize;
-    }
-
-    if (typeof maxSize === "number") {
-      result.maxSize = maxSize;
-    }
-
+    if (selectedTypes.length > 0) result.suffixes = selectedTypes;
+    if (typeof minSize === "number") result.minSize = minSize;
+    if (typeof maxSize === "number") result.maxSize = maxSize;
     if (selectedStorageClasses.length > 0) {
       result.storageClasses = selectedStorageClasses;
     }
@@ -66,24 +80,6 @@
     return result;
   }
 
-  let dropdownOpen = false;
-  let selectedTypes: string[] = [];
-  let minSizeInput = "";
-  let maxSizeInput = "";
-  const allStorageClasses = ["STANDARD", "GLACIER", "INTELLIGENT_TIERING"];
-  let selectedStorageClasses: string[] = [];
-  let dateValue = "";
-  let dateCondition: "before" | "after" | "" = "before";
-  let minUnit = 1;
-  let maxUnit = 1;
-  let unitConversion = [
-    { label: "B", value: 1 },
-    { label: "KB", value: 1024 },
-    { label: "MB", value: 1024 ** 2 },
-    { label: "GB", value: 1024 ** 3 },
-  ];
-  let customType = "";
-
   function toggleDropdown() {
     dropdownOpen = !dropdownOpen;
   }
@@ -98,28 +94,18 @@
     minUnit;
     maxUnit;
 
-    if (dropdownOpen) {
+    if (dropdownOpen && !showSavedFilters) {
       sendFilter();
     }
   }
 
-let lastInitialFilters: any = null;
-
-$: if (initialFilters && initialFilters !== lastInitialFilters) {
+  $: if (initialFilters && initialFilters !== lastInitialFilters) {
     lastInitialFilters = initialFilters;
 
     selectedTypes = initialFilters.suffixes ?? [];
-
-    minSizeInput = initialFilters.minSize
-      ? String(initialFilters.minSize)
-      : "";
-
-    maxSizeInput = initialFilters.maxSize
-      ? String(initialFilters.maxSize)
-      : "";
-
-    selectedStorageClasses =
-      initialFilters.storageClasses ?? [];
+    minSizeInput = initialFilters.minSize ? String(initialFilters.minSize) : "";
+    maxSizeInput = initialFilters.maxSize ? String(initialFilters.maxSize) : "";
+    selectedStorageClasses = initialFilters.storageClasses ?? [];
 
     if (initialFilters.modifiedAfter) {
       dateValue = initialFilters.modifiedAfter;
@@ -132,6 +118,13 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
     }
   }
 
+  $: filteredSavedFilters =
+    savedFilterSearch.trim() === ""
+      ? savedFilters
+      : savedFilters.filter((f) =>
+          f.name.toLowerCase().includes(savedFilterSearch.toLowerCase()),
+        );
+
   function sendFilter() {
     const minSize = minSizeInput
       ? Math.round(Number(minSizeInput) * minUnit)
@@ -140,17 +133,15 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
       ? Math.round(Number(maxSizeInput) * maxUnit)
       : undefined;
 
-    const payload = {
+    onApply({
       selectedTypes,
-      minSize: Number.isNaN(minSize as Number) ? undefined : minSize,
-      maxSize: Number.isNaN(maxSize as Number) ? undefined : maxSize,
+      minSize: Number.isNaN(minSize as number) ? undefined : minSize,
+      maxSize: Number.isNaN(maxSize as number) ? undefined : maxSize,
       storageClasses:
         selectedStorageClasses.length > 0 ? selectedStorageClasses : undefined,
       date: dateValue.trim() || undefined,
       condition: dateValue.trim() ? dateCondition : "",
-    };
-
-    onApply(payload);
+    });
   }
 
   function resetFilters() {
@@ -162,6 +153,7 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
     dateCondition = "before";
     minUnit = 1;
     maxUnit = 1;
+    sendFilter();
   }
 
   function addCustomType() {
@@ -185,7 +177,6 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
     };
 
     document.addEventListener("click", handleClick, true);
-
     return {
       destroy() {
         document.removeEventListener("click", handleClick, true);
@@ -193,24 +184,6 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
     };
   }
 
-  // Saved filters
-  export let savedFilters: { name: string; filters: typeof initialFilters }[] = [];
-
-  // Show saved filters instead of creating new
-  let showSavedFilters = false;
-  let savedFilterSearch = "";
-
-  $: filteredSavedFilters =
-  savedFilterSearch.trim() === ""
-    ? savedFilters
-    : savedFilters.filter(f =>
-        f.name.toLowerCase().includes(savedFilterSearch.toLowerCase())
-      );
-
-  // Delete saved filter
-  export let onDelete: ((name: string) => void) | null = null;
-
-  // Apply a saved filter
   function applySavedFilter(filter: any) {
     selectedTypes = filter.suffixes ?? [];
     minSizeInput = filter.minSize ? String(filter.minSize) : "";
@@ -234,215 +207,219 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
   <button
     type="button"
     on:click|stopPropagation={toggleDropdown}
-    class="border p-2 rounded bg-gray-100 hover:bg-gray-200 flex items-center gap-2"
+    class="art-bracket inline-flex items-center gap-1 rounded-md border border-slate-400/50 bg-slate-900/65 px-2 py-1 text-base font-semibold text-slate-100 transition hover:bg-slate-800/75"
   >
-    <ListIcon class="w-4 h-4" />
+    <ListIcon class="h-4 w-4" />
     <span>Filter</span>
+    <span class="text-sm text-slate-300">v</span>
   </button>
 
   {#if dropdownOpen}
     <div
       use:clickOutside
-      class="absolute mt-1 border rounded bg-white shadow p-4 w-80 z-10"
+      class="absolute right-0 z-40 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto overscroll-contain rounded-md border border-slate-400/55 bg-slate-950/95 p-4 shadow-[0_18px_45px_rgba(2,8,16,0.75)]"
     >
-      <div class="mb-2 flex gap-2">
+      <div class="mb-3 flex gap-2">
         <button
           type="button"
-          class="px-2 py-1 text-xs rounded hover:bg-gray-200"
-          class:bg-blue-200={ !showSavedFilters }
-          on:click={() => showSavedFilters = false}
+          class={`rounded border px-2 py-1 text-xs font-semibold tracking-wide ${
+            !showSavedFilters
+              ? "border-amber-300/60 bg-amber-400/20 text-amber-200"
+              : "border-slate-500/45 bg-slate-900/70 text-slate-200"
+          }`}
+          on:click={() => (showSavedFilters = false)}
         >
           New Filter
         </button>
         <button
           type="button"
-          class="px-2 py-1 text-xs rounded hover:bg-gray-200"
-          class:bg-blue-200={ showSavedFilters }
-          on:click={() => showSavedFilters = true}
+          class={`rounded border px-2 py-1 text-xs font-semibold tracking-wide ${
+            showSavedFilters
+              ? "border-amber-300/60 bg-amber-400/20 text-amber-200"
+              : "border-slate-500/45 bg-slate-900/70 text-slate-200"
+          }`}
+          on:click={() => (showSavedFilters = true)}
         >
           Saved Filters
         </button>
       </div>
 
       {#if !showSavedFilters}
-        <div class="mb-4">
-          <h4 class="font-semibold mb-2">File types</h4>
-          <div class="flex flex-col gap-1">
-            {#each ["zip", "pdf", "png", "jpg", "txt"] as type}
-              <label class="flex items-center gap-2">
-                <input type="checkbox" value={type} bind:group={selectedTypes} />
-                <span class="uppercase">{type}</span>
-              </label>
-            {/each}
-
-            {#each selectedTypes.filter((t) => !["zip", "pdf", "png", "jpg", "txt"].includes(t)) as type}
-              <label class="flex items-center gap-2 text-blue-600">
-                <input type="checkbox" value={type} bind:group={selectedTypes} />
-                <span class="uppercase font-medium text-xs">{type}</span>
-              </label>
-            {/each}
-
-            <div class="mt-2">
-              <input
-                type="text"
-                placeholder="+ add type (e.g. csv, tif, ai)"
-                bind:value={customType}
-                on:keydown={(e) => e.key === "Enter" && addCustomType()}
-                class="border p-1 rounded text-xs w-full outline-none focus:border-blue-400 bg-gray-50 italic"
-              />
+        <div class="space-y-4">
+          <div>
+            <h4 class="mb-2 text-sm font-semibold text-slate-100">File types</h4>
+            <div class="grid grid-cols-2 gap-1 text-xs">
+              {#each defaultFileTypes as type}
+                <label class="inline-flex items-center gap-2 text-slate-200">
+                  <input
+                    class="h-3.5 w-3.5 accent-amber-400"
+                    type="checkbox"
+                    value={type}
+                    bind:group={selectedTypes}
+                  />
+                  <span class="uppercase">{type}</span>
+                </label>
+              {/each}
+              {#each selectedTypes.filter((t) => !defaultFileTypes.includes(t)) as type}
+                <label class="inline-flex items-center gap-2 text-amber-200">
+                  <input
+                    class="h-3.5 w-3.5 accent-amber-400"
+                    type="checkbox"
+                    value={type}
+                    bind:group={selectedTypes}
+                  />
+                  <span class="uppercase">{type}</span>
+                </label>
+              {/each}
             </div>
-          </div>
-        </div>
-
-        <!-- Size -->
-        <div class="mb-4">
-          <h4 class="font-semibold mb-1 text-sm">Size</h4>
-          <div class="flex gap-4">
-            <div class="flex flex-col">
-              <span
-                class="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5"
-                >Min</span
-              >
-              <div class="flex items-center gap-1">
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="0"
-                  bind:value={minSizeInput}
-                  class="border p-1 rounded w-20 text-xs outline-none focus:border-blue-400"
-                />
-                <select
-                  bind:value={minUnit}
-                  class="border p-1 rounded bg-gray-50 text-[10px] h-[30px] cursor-pointer outline-none border-black-300"
-                >
-                  {#each unitConversion as unit}
-                    <option value={unit.value}>{unit.label}</option>
-                  {/each}
-                </select>
-              </div>
-            </div>
-
-            <div class="flex flex-col">
-              <span
-                class="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5"
-                >Max</span
-              >
-              <div class="flex items-center gap-1">
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="Any"
-                  bind:value={maxSizeInput}
-                  class="border p-1 rounded w-20 text-xs outline-none focus:border-blue-400"
-                />
-                <select
-                  bind:value={maxUnit}
-                  class="border p-1 rounded bg-gray-50 text-[10px] h-[30px] cursor-pointer outline-none border-black-300"
-                >
-                  {#each unitConversion as unit}
-                    <option value={unit.value}>{unit.label}</option>
-                  {/each}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Storage Container -->
-        <div class="mb-4">
-          <h4 class="font-semibold mb-2">Storage class</h4>
-          <div class="flex flex-col gap-1">
-            {#each allStorageClasses as storageClass}
-              <label class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  value={storageClass}
-                  checked={selectedStorageClasses.includes(storageClass)}
-                  bind:group={selectedStorageClasses}
-                />
-                {storageClass}
-              </label>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Date -->
-        <div class="mb-4">
-          <h4 class="font-semibold mb-2">Last modified</h4>
-          <div class="flex gap-2 items-center">
             <input
-              type="date"
-              bind:value={dateValue}
-              class="border p-1 rounded w-32 text-sm"
+              type="text"
+              placeholder="+ add type (csv, tif, lbl)"
+              bind:value={customType}
+              on:keydown={(e) => e.key === "Enter" && addCustomType()}
+              class="mt-2 w-full rounded border border-slate-500/45 bg-slate-900/75 px-2 py-1 text-xs text-slate-100 outline-none focus:border-amber-300/75"
             />
-            <select
-              bind:value={dateCondition}
-              class="border p-1 rounded h-[32px] text-sm bg-white"
+          </div>
+
+          <div>
+            <h4 class="mb-1 text-sm font-semibold text-slate-100">Size</h4>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <span class="text-[10px] uppercase tracking-wider text-slate-400">Min</span>
+                <div class="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="0"
+                    bind:value={minSizeInput}
+                    class="w-full rounded border border-slate-500/45 bg-slate-900/75 px-2 py-1 text-xs text-slate-100 outline-none focus:border-amber-300/75"
+                  />
+                  <select
+                    bind:value={minUnit}
+                    class="rounded border border-slate-500/45 bg-slate-900/75 px-1 py-1 text-xs text-slate-100 outline-none"
+                  >
+                    {#each unitConversion as unit}
+                      <option class="bg-slate-900" value={unit.value}>
+                        {unit.label}
+                      </option>
+                    {/each}
+                  </select>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <span class="text-[10px] uppercase tracking-wider text-slate-400">Max</span>
+                <div class="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="Any"
+                    bind:value={maxSizeInput}
+                    class="w-full rounded border border-slate-500/45 bg-slate-900/75 px-2 py-1 text-xs text-slate-100 outline-none focus:border-amber-300/75"
+                  />
+                  <select
+                    bind:value={maxUnit}
+                    class="rounded border border-slate-500/45 bg-slate-900/75 px-1 py-1 text-xs text-slate-100 outline-none"
+                  >
+                    {#each unitConversion as unit}
+                      <option class="bg-slate-900" value={unit.value}>
+                        {unit.label}
+                      </option>
+                    {/each}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="mb-2 text-sm font-semibold text-slate-100">Storage class</h4>
+            <div class="space-y-1 text-xs">
+              {#each allStorageClasses as storageClass}
+                <label class="inline-flex items-center gap-2 text-slate-200">
+                  <input
+                    class="h-3.5 w-3.5 accent-amber-400"
+                    type="checkbox"
+                    value={storageClass}
+                    checked={selectedStorageClasses.includes(storageClass)}
+                    bind:group={selectedStorageClasses}
+                  />
+                  <span>{storageClass}</span>
+                </label>
+              {/each}
+            </div>
+          </div>
+
+          <div>
+            <h4 class="mb-2 text-sm font-semibold text-slate-100">Last modified</h4>
+            <div class="flex items-center gap-2">
+              <input
+                type="date"
+                bind:value={dateValue}
+                class="rounded border border-slate-500/45 bg-slate-900/75 px-2 py-1 text-xs text-slate-100 outline-none"
+              />
+              <select
+                bind:value={dateCondition}
+                class="rounded border border-slate-500/45 bg-slate-900/75 px-2 py-1 text-xs text-slate-100 outline-none"
+              >
+                <option class="bg-slate-900" value="before">Before</option>
+                <option class="bg-slate-900" value="after">After</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <button
+              type="button"
+              on:click={resetFilters}
+              class="text-xs font-medium text-slate-300 transition hover:text-amber-300"
             >
-              <option value="before">Before</option>
-              <option value="after">After</option>
-            </select>
+              Clear all filters
+            </button>
+            <button
+              type="button"
+              class="rounded border border-amber-300/60 bg-amber-300/90 px-2 py-1 text-xs font-semibold text-slate-950 transition hover:bg-amber-200"
+              on:click={() => onSave && onSave()}
+            >
+              Save Filter
+            </button>
           </div>
         </div>
-
-        <button
-          type="button"
-          on:click={resetFilters}
-          class="text-xs text-gray-400 hover:text-gray-600 hover:underline transition-all"
-        >
-          Clear all filters
-        </button>
-
-        <button
-          type="button"
-          class="text-xs text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded"
-          on:click={() => onSave && onSave()}
-        >
-          Save Filter
-        </button>
-
       {:else}
-        <!-- Saved filters list -->
-
-        <!-- Search input -->
         <input
           type="text"
           placeholder="Search saved filters..."
           bind:value={savedFilterSearch}
-          class="border p-1 rounded text-xs w-full mb-2 outline-none focus:border-blue-400"
+          class="mb-2 w-full rounded border border-slate-500/45 bg-slate-900/75 px-2 py-1 text-xs text-slate-100 outline-none focus:border-amber-300/75"
         />
 
         {#if filteredSavedFilters.length === 0}
-          <p class="text-xs text-gray-500 italic">
-            {savedFilterSearch
-              ? "No matching filters found"
-              : "No saved filters yet"}
+          <p class="text-xs italic text-slate-400">
+            {savedFilterSearch ? "No matching filters found" : "No saved filters yet"}
           </p>
         {:else}
-          <div class="flex flex-col gap-1 max-h-64 overflow-y-auto">
+          <div class="flex max-h-64 flex-col gap-1 overflow-y-auto pr-1">
             {#each filteredSavedFilters as filter}
-              <div class="flex flex-col border rounded p-2 hover:bg-gray-100">
-                <div class="flex justify-between items-center">
+              <div class="rounded border border-slate-600/45 bg-slate-900/75 p-2">
+                <div class="flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    class="text-sm text-left flex-1 font-medium"
+                    class="flex-1 text-left text-sm font-semibold text-slate-100 hover:text-amber-200"
                     on:click={() => applySavedFilter(filter.filters)}
                   >
                     {filter.name}
                   </button>
-
                   <button
                     type="button"
-                    class="text-xs text-gray-400 hover:text-red-500"
+                    class="px-1 text-xs font-semibold text-slate-400 transition hover:text-rose-300"
                     on:click={() => onDelete && onDelete(filter.name)}
                   >
-                    ✕
+                    x
                   </button>
                 </div>
-
-                <div class="text-xs text-gray-500 mt-1">
+                <div class="mt-1 text-[11px] text-slate-400">
                   {#if filter.filters?.suffixes}
                     {filter.filters.suffixes.join(", ")}
                   {/if}
@@ -466,7 +443,7 @@ $: if (initialFilters && initialFilters !== lastInitialFilters) {
             {/each}
           </div>
         {/if}
-      {/if} 
+      {/if}
     </div>
   {/if}
 </div>
