@@ -1,9 +1,12 @@
 <script lang="ts">
   import {
+    ChevronDown,
     ChevronFirst,
     ChevronLast,
     ChevronLeft,
     ChevronRight,
+    ChevronsUpDown,
+    ChevronUp,
     Download,
     Eye,
     Pencil,
@@ -120,6 +123,7 @@
   }
 
   function sortLabel(column: "Key" | "Size" | "LastModified", label: string) {
+    console.log(sortBy, column, label);
     if (sortBy !== column) return `${label} -`;
     return `${label} ${sortDirection === "asc" ? "^" : "v"}`;
   }
@@ -130,33 +134,58 @@
     No results yet.<br />Enter an S3 URI and run a search.
   </p>
 {:else if items.length === 0}
-  <p class="text-base text-slate-300/90 md:text-lg">No results found. Try a different query.</p>
+  <p class="text-base text-slate-300/90 md:text-lg">
+    No results found. Try a different query.
+  </p>
 {:else}
   <div class="space-y-4">
-    <div class="overflow-x-auto rounded-md border border-slate-400/55 bg-slate-950/45">
+    <div
+      class="overflow-x-auto rounded-md border border-slate-400/55 bg-slate-950/45"
+    >
       <table class="w-full min-w-[980px] text-sm">
         <thead class="border-b border-slate-500/55 bg-slate-900/70 text-left">
           <tr class="text-base font-semibold text-slate-100">
             <th
               title="Sort Alphabetically"
-              class="cursor-pointer px-4 py-3"
+              class="cursor-pointer px-4 py-3 text-nowrap"
               on:click={() => onSort("Key")}
             >
-              {sortLabel("Key", "File Name")}
+              File Name
+              {#if sortBy !== "Key"}
+                <ChevronsUpDown class="opacity-60 inline" />
+              {:else if sortDirection === "asc"}
+                <ChevronUp class="inline" />
+              {:else}
+                <ChevronDown class="inline" />
+              {/if}
             </th>
             <th
               title="Sort by Biggest/Smallest"
-              class="cursor-pointer px-3 py-3"
+              class="cursor-pointer px-3 py-3 text-nowrap"
               on:click={() => onSort("Size")}
             >
-              {sortLabel("Size", "Size")}
+              Size
+              {#if sortBy !== "Size"}
+                <ChevronsUpDown class="opacity-60 inline" />
+              {:else if sortDirection === "asc"}
+                <ChevronUp class="inline" />
+              {:else}
+                <ChevronDown class="inline" />
+              {/if}
             </th>
             <th
               title="Sort by Most Recent/Least Recent"
-              class="cursor-pointer px-3 py-3"
+              class="cursor-pointer px-3 py-3 text-nowrap"
               on:click={() => onSort("LastModified")}
             >
-              {sortLabel("LastModified", "Last Modified")}
+              Last Modified
+              {#if sortBy !== "LastModified"}
+                <ChevronsUpDown class="opacity-60 inline" />
+              {:else if sortDirection === "asc"}
+                <ChevronUp class="inline" />
+              {:else}
+                <ChevronDown class="inline" />
+              {/if}
             </th>
             <th class="px-3 py-3">Storage Class</th>
             <th class="px-3 py-3">Tags</th>
@@ -169,19 +198,30 @@
             <tr
               class={`group border-b border-slate-800/90 ${idx % 2 === 0 ? "bg-slate-900/45" : "bg-slate-800/65"}`}
             >
-              <td class="max-w-[34rem] truncate px-4 py-3 text-sm text-slate-100 mono" title={obj.key}>
+              <td
+                class="max-w-[34rem] truncate px-4 py-3 text-sm text-slate-100 mono"
+                title={obj.key}
+              >
                 {obj.key}
               </td>
-              <td class="px-3 py-3 text-sm text-slate-200">{formatSize(obj.size)}</td>
+              <td class="px-3 py-3 text-sm text-slate-200"
+                >{formatSize(obj.size)}</td
+              >
               <td class="px-3 py-3 text-sm text-slate-200">
                 {obj.lastModified ? formatDate(obj.lastModified) : "unknown"}
               </td>
-              <td class="px-3 py-3 text-sm text-slate-200">{obj.storageClass ?? "STANDARD"}</td>
-              <td class="max-w-[18rem] truncate px-3 py-3 text-sm text-slate-200">
+              <td class="px-3 py-3 text-sm text-slate-200"
+                >{obj.storageClass ?? "STANDARD"}</td
+              >
+              <td
+                class="max-w-[18rem] truncate px-3 py-3 text-sm text-slate-200"
+              >
                 {obj.tags && obj.tags.length > 0 ? obj.tags.join(", ") : "-"}
               </td>
               <td class="px-2 py-2">
-                <div class="flex items-center justify-center gap-1 opacity-65 transition group-hover:opacity-100">
+                <div
+                  class="flex items-center justify-center gap-1 opacity-65 transition group-hover:opacity-100"
+                >
                   <button
                     class="icon-button"
                     on:click={() => onDownload(obj.key)}
@@ -215,7 +255,9 @@
             {#if previewKey === obj.key}
               <tr class="border-b border-slate-700/70 bg-slate-950/70">
                 <td colspan="6" class="p-4">
-                  <div class="rounded-md border border-slate-500/45 bg-slate-900/70 p-3">
+                  <div
+                    class="rounded-md border border-slate-500/45 bg-slate-900/70 p-3"
+                  >
                     <div class="mb-2 flex items-center justify-between gap-2">
                       <p class="truncate text-sm font-semibold text-slate-200">
                         Preview: {previewKey}
@@ -231,7 +273,9 @@
                     {#if previewLoading}
                       <p class="text-sm text-slate-300">Loading preview...</p>
                     {:else if previewError}
-                      <p class="text-sm text-rose-300">Failed to load preview: {previewError}</p>
+                      <p class="text-sm text-rose-300">
+                        Failed to load preview: {previewError}
+                      </p>
                     {:else if previewUrl}
                       {#if obj.key.toLowerCase().endsWith(".pdf")}
                         <iframe
@@ -240,12 +284,17 @@
                           class="h-[620px] w-full rounded border border-slate-600/55 bg-white"
                         ></iframe>
                       {:else if obj.key.toLowerCase().endsWith(".mp4")}
-                        <video controls class="max-h-[620px] w-full rounded border border-slate-600/55">
+                        <video
+                          controls
+                          class="max-h-[620px] w-full rounded border border-slate-600/55"
+                        >
                           <source src={previewUrl} type="video/mp4" />
                           Your browser does not support the video tag.
                         </video>
                       {:else if obj.key.toLowerCase().endsWith(".mp3")}
-                        <div class="rounded border border-slate-600/55 bg-slate-950/60 p-4">
+                        <div
+                          class="rounded border border-slate-600/55 bg-slate-950/60 p-4"
+                        >
                           <p class="mb-2 text-xs text-slate-400">
                             Audio preview: {obj.key.split("/").pop()}
                           </p>
@@ -254,8 +303,11 @@
                           </audio>
                         </div>
                       {:else if obj.size > 52428800}
-                        <div class="rounded border border-amber-300/45 bg-amber-500/15 p-4 text-sm text-amber-100">
-                          This file is {formatSize(obj.size)}. Open in a new tab for a safer preview.
+                        <div
+                          class="rounded border border-amber-300/45 bg-amber-500/15 p-4 text-sm text-amber-100"
+                        >
+                          This file is {formatSize(obj.size)}. Open in a new tab
+                          for a safer preview.
                           <a
                             href={previewUrl}
                             target="_blank"
@@ -265,23 +317,36 @@
                             Open preview
                           </a>
                         </div>
-                      {:else if obj.key.toLowerCase().match(/\.(xml|lbl|lab|asc|txt)$/)}
-                        <div class="overflow-hidden rounded border border-slate-600/55 bg-slate-950/70">
-                          <div class="border-b border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-300">
+                      {:else if obj.key
+                        .toLowerCase()
+                        .match(/\.(xml|lbl|lab|asc|txt)$/)}
+                        <div
+                          class="overflow-hidden rounded border border-slate-600/55 bg-slate-950/70"
+                        >
+                          <div
+                            class="border-b border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-300"
+                          >
                             {obj.key.split("/").pop()}
                           </div>
                           <div class="max-h-[560px] overflow-auto p-3">
                             {#await fetch(previewUrl).then((res) => res.text())}
-                              <p class="text-sm text-slate-300">Reading file content...</p>
+                              <p class="text-sm text-slate-300">
+                                Reading file content...
+                              </p>
                             {:then content}
-                              <pre class="mono whitespace-pre-wrap break-all text-xs leading-relaxed text-slate-100">{content}</pre>
+                              <pre
+                                class="mono whitespace-pre-wrap break-all text-xs leading-relaxed text-slate-100">{content}</pre>
                             {:catch error}
-                              <p class="text-xs text-rose-300">Failed to load text: {error.message}</p>
+                              <p class="text-xs text-rose-300">
+                                Failed to load text: {error.message}
+                              </p>
                             {/await}
                           </div>
                         </div>
                       {:else}
-                        <div class="rounded border border-slate-600/55 bg-slate-900/80 p-2">
+                        <div
+                          class="rounded border border-slate-600/55 bg-slate-900/80 p-2"
+                        >
                           <img
                             src={previewUrl}
                             alt="Preview"
@@ -299,9 +364,12 @@
       </table>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+    <div
+      class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300"
+    >
       <span>
-        Showing <b>{pageStart + 1}</b> to <b>{pageEnd}</b> of <b>{items.length}</b> results
+        Showing <b>{pageStart + 1}</b> to <b>{pageEnd}</b> of
+        <b>{items.length}</b> results
       </span>
       <div class="flex items-center">
         <button
